@@ -2,15 +2,18 @@ package advent2024;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
 
 public class Advent14 {
     private static int maxX = 100;
     private static int maxY = 102;
+    private static double distanceDiff = Double.MAX_VALUE;
 
     public static void main(String[] args) throws FileNotFoundException {
 //        Scanner scanner = new Scanner(new File(advent2024.Advent2.class.getResource("/advent_14_example.txt").getPath()));
-        Scanner scanner = new Scanner(new File(Advent14.class.getResource("/advent_14_input.txt").getPath()));
+        Scanner scanner = new Scanner(new File(Advent14.class.getResource("/advent_14_alternate_input.txt").getPath()));
         List<Robot> robots = new ArrayList<>();
         while (scanner.hasNext()) {
             String line = scanner.nextLine();
@@ -19,7 +22,7 @@ public class Advent14 {
         printRobotMatrix(robots, true);
         for (int second = 0; second < 10000; second++) {
             robots.forEach(Robot::move);
-            if (areMostRobotsInTriangle(robots)) {
+            if (isAverageToThreePointsSmall(robots)) {
                 System.out.println("Second " + (second + 1));
                 printRobotMatrix(robots, true);
             }
@@ -76,42 +79,42 @@ public class Advent14 {
         }
     }
 
-    // this was generated with the following prompt "a method receiving a list of Robot that checks if the most of the robots are inside a triangle with one angle in the middle of the top line and the other two on third from each bottom corner"
-    public static boolean areMostRobotsInTriangle(List<Robot> robots) {
-        // Define the triangle vertices
+    public static boolean isAverageToThreePointsSmall(List<Robot> robots) {
+        // Pick three points to measure distance to
         int topX = maxX / 2, topY = 0;             // Top vertex (middle of the top line)
         int leftX = maxX / 3, leftY = maxY;        // Left bottom vertex (one-third from bottom-left corner)
         int rightX = 2 * maxX / 3, rightY = maxY;  // Right bottom vertex (two-thirds from bottom-right corner)
+        List<Integer> distanceTop = new ArrayList<>();
+        List<Integer> distanceLeft = new ArrayList<>();
+        List<Integer> distanceRight = new ArrayList<>();
 
-        // Check if a point is inside the triangle using the barycentric method
-        int robotsInside = 0;
         for (Robot robot : robots) {
-            if (isPointInsideTriangle(robot.getX(), robot.getY(),
-                    topX, topY, leftX, leftY, rightX, rightY)) {
-                robotsInside++;
-            }
+            distanceTop.add(distance(robot.x, robot.y, topX, topY));
+            distanceLeft.add(distance(robot.x, robot.y, leftX, leftY));
+            distanceRight.add(distance(robot.x, robot.y, rightX, rightY));
         }
-
-        // Check if most robots are inside the triangle
-        return robotsInside > robots.size() / 2;
+        double leftAverage = distanceLeft.stream().mapToInt(Integer::intValue).average().getAsDouble();
+        double rightAverage = distanceRight.stream().mapToInt(Integer::intValue).average().getAsDouble();
+        double topAverage = distanceTop.stream().mapToInt(Integer::intValue).average().getAsDouble();
+        double leftDiff = 0;
+        double rightDiff = 0;
+        double topDiff = 0;
+        for (int i = 0; i < distanceTop.size(); i++) {
+            leftDiff += Math.abs(distanceLeft.get(i) - leftAverage);
+            rightDiff += Math.abs(distanceRight.get(i) - rightAverage);
+            topDiff += Math.abs(distanceTop.get(i) - topAverage);
+        }
+        double totalDistance = leftDiff + rightDiff + topDiff;
+        boolean b = totalDistance < distanceDiff;
+        if (b) {
+            distanceDiff = totalDistance;
+            System.out.println(totalDistance);
+        }
+        return b;
     }
 
-    private static boolean isPointInsideTriangle(int px, int py,
-                                                 int ax, int ay,
-                                                 int bx, int by,
-                                                 int cx, int cy) {
-        // Calculate the areas
-        double areaOrig = triangleArea(ax, ay, bx, by, cx, cy);
-        double area1 = triangleArea(px, py, bx, by, cx, cy);
-        double area2 = triangleArea(ax, ay, px, py, cx, cy);
-        double area3 = triangleArea(ax, ay, bx, by, px, py);
-
-        // Check if the sum of sub-areas equals the original area
-        return Math.abs(areaOrig - (area1 + area2 + area3)) < 1e-6;
-    }
-
-    private static double triangleArea(int x1, int y1, int x2, int y2, int x3, int y3) {
-        return Math.abs((x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2)) / 2.0);
+    public static int distance(int x, int y, int destX, int destY) {
+        return Math.abs(x - destX) + Math.abs(y - destY);
     }
 
     public static class Robot {
